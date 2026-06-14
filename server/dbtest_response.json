@@ -1,0 +1,32 @@
+﻿{
+    "status":  "Success",
+    "message":  "Database connection verified",
+    "details":  {
+                    "isConnected":  true,
+                    "database":  "test",
+                    "host":  "ac-4ontzg1-shard-00-02.a745pnm.mongodb.net",
+                    "collections":  [
+                                        {
+                                            "name":  "users",
+                                            "type":  "collection",
+                                            "options":  {
+
+                                                        },
+                                            "info":  {
+                                                         "readOnly":  false,
+                                                         "uuid":  "e38db576-6761-4d65-afad-bb514243cd8b"
+                                                     },
+                                            "idIndex":  {
+                                                            "v":  2,
+                                                            "key":  {
+                                                                        "_id":  1
+                                                                    },
+                                                            "name":  "_id_"
+                                                        }
+                                        }
+                                    ]
+                },
+    "collections":  [
+                        "users"
+                    ]
+}
