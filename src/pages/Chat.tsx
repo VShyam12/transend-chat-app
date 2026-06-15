@@ -348,7 +348,18 @@ const ChatPage = () => {
 
         if (isMounted) {
           setAvailableUsers(nextAvailableUsers)
-          setChats(mappedChats)
+          console.log('Chats poll updating state - this may overwrite status')
+          setChats((prevChats) => {
+            const prevById = new Map(prevChats.map((c) => [c.id, c]))
+            return mappedChats.map((chat) => {
+              const prev = prevById.get(chat.id)
+              if (prev && Array.isArray(prev.messages) && prev.messages.length > 0) {
+                // Preserve the existing messages array (and its status fields)
+                return { ...chat, messages: prev.messages, lastMessage: chat.lastMessage || prev.lastMessage }
+              }
+              return chat
+            })
+          })
           setSelectedChatId((previous) => {
             if (previous && mappedChats.some((chat) => chat.id === previous)) {
               return previous

@@ -5,6 +5,7 @@ import Group from './models/Group.js';
 import { translateText } from './utils/translate.js';
 
 const connectedUsers = new Map();
+const activeChats = new Map();
 
 let ioInstance = null;
 
@@ -195,7 +196,18 @@ const initializeSocket = (io) => {
             return;
           }
 
+          console.log('--- Chat opened ---');
+          console.log('User:', userId, 'opened chat with:', normalizedSenderId);
+          console.log('activeChats before set:', JSON.stringify([...activeChats]));
           console.log('Chat opened by:', socket.userId, 'for sender:', normalizedSenderId);
+          activeChats.set(userId, normalizedSenderId);
+          console.log('activeChats after set:', JSON.stringify([...activeChats]));
+
+          const messagesToUpdate = await Message.find({
+            senderId: normalizedSenderId,
+            receiverId: userId,
+            status: { $ne: 'read' },
+          }).select('_id');
 
           const readCount = await promoteMessagesToStatus({
             filter: {
@@ -207,6 +219,17 @@ const initializeSocket = (io) => {
             isRead: true,
           });
           console.log('Messages updated to read:', readCount);
+
+          const senderSocketId = connectedUsers.get(normalizedSenderId);
+          if (senderSocketId && messagesToUpdate.length > 0) {
+            messagesToUpdate.forEach((msg) => {
+              ioInstance.to(senderSocketId).emit('messageStatusUpdate', {
+                messageId: String(msg._id),
+                status: 'read',
+              });
+            });
+            console.log('Emitted read status to sender socket:', senderSocketId, 'for', messagesToUpdate.length, 'messages');
+          }
         } catch (error) {
           socket.emit('socketError', { message: error.message || 'Failed to mark chat as read' });
         }
@@ -216,6 +239,10 @@ const initializeSocket = (io) => {
         try {
           const { receiverId, message, language } = payload;
           const imageUrl = resolveImageUrl(payload);
+
+          console.log('--- New message sent ---');
+          console.log('Sender:', userId, 'Receiver:', receiverId);
+          console.log('activeChats map:', JSON.stringify([...activeChats]));
 
           if (!receiverId || (!message && !imageUrl)) {
             socket.emit('socketError', { message: 'receiverId and either message or imageUrl are required' });
@@ -270,7 +297,29 @@ const initializeSocket = (io) => {
           });
 
           const receiverSocketId = connectedUsers.get(String(receiverId));
-          if (receiverSocketId) {
+          const receiverActiveChat = activeChats.get(String(receiverId));
+          console.log('receiverActiveChat:', receiverActiveChat);
+          console.log('Match check:', receiverActiveChat === String(userId));
+          if (receiverActiveChat === String(userId)) {
+            await Message.updateOne(
+              { _id: createdMessage._id },
+              {
+                $set: {
+                  status: 'read',
+                  isRead: true,
+                },
+              }
+            );
+
+            const senderSocketId = connectedUsers.get(String(userId));
+            console.log('Emitting status update to socket:', senderSocketId, 'messageId:', String(createdMessage._id), 'status:', 'read');
+            if (senderSocketId) {
+              ioInstance.to(senderSocketId).emit('messageStatusUpdate', {
+                messageId: String(createdMessage._id),
+                status: 'read',
+              });
+            }
+          } else if (receiverSocketId) {
             await Message.updateOne(
               { _id: createdMessage._id },
               {
@@ -286,6 +335,7 @@ const initializeSocket = (io) => {
             if (senderSocketId) {
               ioInstance.to(senderSocketId).emit('messageStatusUpdate', {
                 messageId: String(createdMessage._id),
+                clientMessageId: payload.clientMessageId || undefined,
                 status: 'delivered',
               });
             }
@@ -404,6 +454,7 @@ const initializeSocket = (io) => {
         const currentUserId = socket.data.userId;
         if (currentUserId && connectedUsers.get(currentUserId) === socket.id) {
           connectedUsers.delete(currentUserId);
+          activeChats.delete(currentUserId);
           socket.broadcast.emit('userDisconnected', { userId: currentUserId });
         }
       });

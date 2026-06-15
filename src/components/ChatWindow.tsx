@@ -243,6 +243,11 @@ const ChatWindow = ({ currentUser, selectedChat, onGroupsChanged }: ChatWindowPr
     let isMounted = true
 
     const loadMessages = async () => {
+      console.log('loadMessages triggered - dependencies:', {
+        selectedChatId: selectedChat.id,
+        primaryRecipientId: primaryRecipient?.id,
+        activeLanguage,
+      })
       if (isGroupChat) {
         setIsLoading(true)
         setError('')
@@ -417,6 +422,13 @@ const ChatWindow = ({ currentUser, selectedChat, onGroupsChanged }: ChatWindowPr
         return
       }
 
+      console.log('RECEIVED messageStatusUpdate:', payload)
+      try {
+        console.log('Current messages before update:', messages.map((m) => ({ id: m._id, status: m.status })))
+      } catch (e) {
+        console.log('Could not log current messages before update')
+      }
+
       setMessages((prevMessages) => prevMessages.map((message) => (
         message._id === messageId || message.id === messageId || (payload?.clientMessageId && message.clientMessageId === payload.clientMessageId)
           ? {
@@ -425,6 +437,18 @@ const ChatWindow = ({ currentUser, selectedChat, onGroupsChanged }: ChatWindowPr
             }
           : message
       )))
+
+      // Log the computed new state (approximate, from current messages)
+      try {
+        const computed = messages.map((message) => (
+          message._id === messageId || message.id === messageId || (payload?.clientMessageId && message.clientMessageId === payload.clientMessageId)
+            ? { id: message._id, status: nextStatus }
+            : { id: message._id, status: message.status }
+        ))
+        console.log('Messages after update (computed):', computed)
+      } catch (e) {
+        console.log('Could not compute messages after update')
+      }
     }
 
     const handleTypingEvent = (payload: any) => {
