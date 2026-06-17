@@ -27,6 +27,7 @@ export interface Message {
     name: string;
   };
   imageUrl?: string | null;
+  audioUrl?: string | null;
   reactions?: Array<{
     userId: string;
     emoji: string;

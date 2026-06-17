@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { format } from 'date-fns'
 import { API_URL } from '../utils/api'
 import api from '../utils/api'
@@ -51,8 +51,9 @@ const MessageBubble = ({ message, isOwn, currentLanguage, currentUserId, userNam
         ? message.translated
         : translatedFromMap)
       : undefined)
-  const displayText = isDeleted ? 'This message was deleted' : (translatedText || message.text)
-  const shouldShowOriginal = !isDeleted && Boolean(translatedText) && translatedText !== message.text
+  const hasAudio = Boolean(message.audioUrl)
+  const displayText = isDeleted ? 'This message was deleted' : (hasAudio ? '' : (translatedText || message.text))
+  const shouldShowOriginal = !isDeleted && !hasAudio && Boolean(translatedText) && translatedText !== message.text
 
   const reactionSummary = useMemo(() => {
     const reactions = Array.isArray(message.reactions) ? message.reactions : []
@@ -82,6 +83,44 @@ const MessageBubble = ({ message, isOwn, currentLanguage, currentUserId, userNam
 
     return `${API_URL}${message.imageUrl.startsWith('/') ? '' : '/'}${message.imageUrl}`
   }, [message.imageUrl])
+
+  const resolvedAudioUrl = useMemo(() => {
+    if (!message.audioUrl) {
+      return null
+    }
+
+    if (message.audioUrl.startsWith('http://') || message.audioUrl.startsWith('https://')) {
+      return message.audioUrl
+    }
+
+    return `${API_URL}${message.audioUrl.startsWith('/') ? '' : '/'}${message.audioUrl}`
+  }, [message.audioUrl])
+
+  const audioRef = useRef<HTMLAudioElement>(null)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [duration, setDuration] = useState(0)
+
+  const formatTime = (seconds: number) => {
+    if (!seconds || Number.isNaN(seconds)) {
+      return '0:00'
+    }
+    const mins = Math.floor(seconds / 60)
+    const secs = Math.floor(seconds % 60)
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
+  const togglePlay = () => {
+    const audioElement = audioRef.current
+    if (!audioElement) {
+      return
+    }
+    if (isPlaying) {
+      audioElement.pause()
+    } else {
+      void audioElement.play()
+    }
+  }
 
   const getReactionNames = (emoji: string) => {
     const names = (Array.isArray(message.reactions) ? message.reactions : [])
@@ -201,9 +240,11 @@ const MessageBubble = ({ message, isOwn, currentLanguage, currentUserId, userNam
             </div>
           ) : (
             <>
-              <p className={`whitespace-pre-wrap text-sm leading-6 ${isDeleted ? 'italic text-gray-500 dark:text-gray-400' : ''}`}>
-                {displayText}
-              </p>
+              {!resolvedAudioUrl && (
+                <p className={`whitespace-pre-wrap text-sm leading-6 ${isDeleted ? 'italic text-gray-500 dark:text-gray-400' : ''}`}>
+                  {displayText}
+                </p>
+              )}
 
               {resolvedImageUrl && !isDeleted && (
                 <div className="mt-3 overflow-hidden rounded-xl border border-black/10 bg-black/5">
@@ -212,6 +253,69 @@ const MessageBubble = ({ message, isOwn, currentLanguage, currentUserId, userNam
                     alt={message.text || 'Uploaded image'}
                     className="max-h-72 w-full object-cover"
                   />
+                </div>
+              )}
+
+              {resolvedAudioUrl && !isDeleted && (
+                <div
+                  className={`mt-3 min-w-[200px] rounded-2xl border px-3 py-3 shadow-sm ${isOwn
+                      ? 'border-white/10 bg-white/10 text-white'
+                      : 'border-gray-200 bg-white/70 text-gray-900 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100'
+                    }`}
+                >
+                  <audio
+                    ref={audioRef}
+                    src={resolvedAudioUrl}
+                    preload="metadata"
+                    controls={false}
+                    onLoadedMetadata={() => {
+                      const audioElement = audioRef.current
+                      setDuration(audioElement?.duration || 0)
+                    }}
+                    onTimeUpdate={() => {
+                      const audioElement = audioRef.current
+                      setProgress(audioElement?.currentTime || 0)
+                    }}
+                    onEnded={() => {
+                      setIsPlaying(false)
+                      setProgress(0)
+                      if (audioRef.current) {
+                        audioRef.current.currentTime = 0
+                      }
+                    }}
+                    onPlay={() => setIsPlaying(true)}
+                    onPause={() => setIsPlaying(false)}
+                    style={{ position: 'absolute', width: 0, height: 0, opacity: 0, pointerEvents: 'none' }}
+                  />
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={togglePlay}
+                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors ${isOwn
+                          ? 'bg-white text-indigo-700 hover:bg-white/90'
+                          : 'bg-indigo-600 text-white hover:bg-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-400'
+                        }`}
+                      aria-label={isPlaying ? 'Pause voice message' : 'Play voice message'}
+                    >
+                      <span className="text-lg leading-none">{isPlaying ? '⏸️' : '▶️'}</span>
+                    </button>
+                    <div className="min-w-0 flex-1">
+                      <div className="h-2 overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
+                        <div
+                          className="h-full rounded-full bg-current transition-all"
+                          style={{
+                            width: `${duration > 0 ? Math.min(100, (progress / duration) * 100) : 0}%`,
+                          }}
+                        />
+                      </div>
+                      <div className="mt-1 flex items-center justify-between gap-3 text-[11px] font-medium opacity-80">
+                        <span>Voice message</span>
+                        <span>
+                          {formatTime(progress)} / {formatTime(duration)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 

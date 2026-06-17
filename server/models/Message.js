@@ -32,6 +32,10 @@ const messageSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    audioUrl: {
+      type: String,
+      default: null,
+    },
     // Reactions: an array of { userId, emoji }
     reactions: [
       {

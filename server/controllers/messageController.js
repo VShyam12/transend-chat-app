@@ -17,6 +17,8 @@ const resolveImageUrl = (payload = {}) => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
+const buildUploadUrl = (filename) => `http://localhost:5000/uploads/${filename}`;
+
 const toPlainMap = (value) => {
   if (!value) {
     return {};
@@ -34,7 +36,7 @@ const toPlainMap = (value) => {
 };
 
 const createMessage = async (payload) => {
-  const { senderId, receiverId, message, translated, isRead = false, imageUrl = null } = payload;
+  const { senderId, receiverId, message, translated, isRead = false, imageUrl = null, audioUrl = null } = payload;
 
   const messageDocument = await Message.create({
     senderId,
@@ -43,6 +45,7 @@ const createMessage = async (payload) => {
     translated,
     isRead,
     imageUrl,
+    audioUrl,
   });
 
   return messageDocument;
@@ -56,6 +59,7 @@ const formatDeletedMessage = (messageDocument) => {
     message: 'This message was deleted',
     text: 'This message was deleted',
     imageUrl: null,
+    audioUrl: null,
     deleted: true,
   };
 };
@@ -120,6 +124,58 @@ const sendMessage = asyncHandler(async (req, res) => {
   res.status(201).json({
     success: true,
     message: formattedMessage,
+  });
+});
+
+const uploadAudio = asyncHandler(async (req, res) => {
+  if (!req.file) {
+    res.status(400);
+    throw new Error('No audio file uploaded');
+  }
+
+  const receiverId = String(req.body?.receiverId ?? '');
+  const senderId = String(req.user?._id ?? '');
+  const audioUrl = buildUploadUrl(req.file.filename);
+  const messageText = typeof req.body?.message === 'string' && req.body.message.trim()
+    ? req.body.message.trim()
+    : 'Voice message';
+
+  if (!receiverId) {
+    res.status(400);
+    throw new Error('receiverId is required');
+  }
+
+  const receiver = await User.findById(receiverId).select('_id preferredLanguage');
+  if (!receiver) {
+    res.status(404);
+    throw new Error('Receiver not found');
+  }
+
+  const savedMessage = await createMessage({
+    senderId,
+    receiverId,
+    message: messageText,
+    translated: {},
+    isRead: false,
+    audioUrl,
+  });
+
+  const populatedMessage = await Message.findById(savedMessage._id)
+    .populate('senderId', 'name email preferredLanguage')
+    .populate('receiverId', 'name email preferredLanguage');
+
+  const formattedMessage = serializeMessage(populatedMessage);
+  formattedMessage.audioUrl = formattedMessage.audioUrl || audioUrl;
+
+  emitToUser(String(receiverId), 'receiveMessage', {
+    ...formattedMessage,
+    audioUrl: formattedMessage.audioUrl,
+  });
+
+  res.status(201).json({
+    success: true,
+    message: formattedMessage,
+    audioUrl,
   });
 });
 
@@ -492,4 +548,4 @@ const toggleReaction = asyncHandler(async (req, res) => {
   res.json({ success: true, message: formatted })
 })
 
-export { sendMessage, getMessages, getChats, markMessagesAsRead, createMessage, uploadFile, toggleReaction, deleteMessage, editMessage };
+export { sendMessage, getMessages, getChats, markMessagesAsRead, createMessage, uploadFile, uploadAudio, toggleReaction, deleteMessage, editMessage };

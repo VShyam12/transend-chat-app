@@ -55,11 +55,12 @@ const normalizeMessage = (payload: any, currentLanguage: string): Message => {
     status: payload?.status ?? (payload?.isRead ? 'read' : 'sent'),
     language: payload?.language ?? currentLanguage,
     imageUrl: payload?.imageUrl ?? null,
+    audioUrl: payload?.audioUrl ?? null,
     reactions: Array.isArray(payload?.reactions)
       ? payload.reactions.map((reaction: any) => ({
-          userId: String(reaction?.userId ?? ''),
-          emoji: String(reaction?.emoji ?? ''),
-        }))
+        userId: String(reaction?.userId ?? ''),
+        emoji: String(reaction?.emoji ?? ''),
+      }))
       : [],
     createdAt: payload?.createdAt ?? payload?.timestamp ?? new Date(),
     deleted: Boolean(payload?.deleted),
@@ -159,13 +160,13 @@ const ChatWindow = ({ currentUser, selectedChat, onGroupsChanged }: ChatWindowPr
     setMessages((prevMessages) => prevMessages.map((message) => (
       message.id === messageId
         ? {
-            ...message,
-            text: 'This message was deleted',
-            translated: undefined,
-            imageUrl: null,
-            deleted: true,
-            deletedAt: deletedTimestamp,
-          }
+          ...message,
+          text: 'This message was deleted',
+          translated: undefined,
+          imageUrl: null,
+          deleted: true,
+          deletedAt: deletedTimestamp,
+        }
         : message
     )))
 
@@ -180,9 +181,9 @@ const ChatWindow = ({ currentUser, selectedChat, onGroupsChanged }: ChatWindowPr
     setMessages((prevMessages) => prevMessages.map((message) => (
       message.id === nextMessage.id
         ? {
-            ...message,
-            ...nextMessage,
-          }
+          ...message,
+          ...nextMessage,
+        }
         : message
     )))
 
@@ -349,6 +350,7 @@ const ChatWindow = ({ currentUser, selectedChat, onGroupsChanged }: ChatWindowPr
       const incomingMessage: Message = {
         ...normalized,
         imageUrl: payload?.imageUrl ?? normalized.imageUrl ?? null,
+        audioUrl: payload?.audioUrl ?? normalized.audioUrl ?? null,
       }
 
       if (isGroupChat) {
@@ -399,6 +401,7 @@ const ChatWindow = ({ currentUser, selectedChat, onGroupsChanged }: ChatWindowPr
       const sentMessage: Message = {
         ...normalized,
         imageUrl: payload?.imageUrl ?? normalized.imageUrl ?? null,
+        audioUrl: payload?.audioUrl ?? normalized.audioUrl ?? null,
       }
 
       if (
@@ -432,9 +435,9 @@ const ChatWindow = ({ currentUser, selectedChat, onGroupsChanged }: ChatWindowPr
       setMessages((prevMessages) => prevMessages.map((message) => (
         message._id === messageId || message.id === messageId || (payload?.clientMessageId && message.clientMessageId === payload.clientMessageId)
           ? {
-              ...message,
-              status: nextStatus,
-            }
+            ...message,
+            status: nextStatus,
+          }
           : message
       )))
 
@@ -499,6 +502,7 @@ const ChatWindow = ({ currentUser, selectedChat, onGroupsChanged }: ChatWindowPr
       const updatedMessage: Message = {
         ...normalized,
         imageUrl: payload?.imageUrl ?? normalized.imageUrl ?? null,
+        audioUrl: payload?.audioUrl ?? normalized.audioUrl ?? null,
       }
 
       if (isGroupChat) {
@@ -531,6 +535,7 @@ const ChatWindow = ({ currentUser, selectedChat, onGroupsChanged }: ChatWindowPr
       const editedMessage: Message = {
         ...normalized,
         imageUrl: payload?.imageUrl ?? normalized.imageUrl ?? null,
+        audioUrl: payload?.audioUrl ?? normalized.audioUrl ?? null,
         edited: true,
         editedAt: payload?.editedAt ?? new Date(),
       }

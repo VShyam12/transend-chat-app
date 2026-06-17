@@ -55,6 +55,7 @@ const serializeMessage = (messageDocument) => {
     isRead: Boolean(rawMessage.isRead),
     status,
     imageUrl: rawMessage.imageUrl || null,
+    audioUrl: rawMessage.audioUrl || null,
     reactions: Array.isArray(rawMessage.reactions)
       ? rawMessage.reactions.map(r => ({ userId: String(r.userId), emoji: r.emoji }))
       : [],

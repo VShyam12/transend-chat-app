@@ -22,18 +22,25 @@ const storage = multer.diskStorage({
 })
 
 const fileFilter = function (_req, file, cb) {
-  // Allow common image types; you can extend if needed
-  if (file.mimetype.startsWith('image/') || file.mimetype === 'application/octet-stream') {
+  const allowedAudioMimeTypes = new Set([
+    'audio/webm',
+    'audio/mp3',
+    'audio/wav',
+    'audio/mpeg',
+  ])
+
+  // Allow common image types plus audio uploads used for voice messages.
+  if (file.mimetype.startsWith('image/') || allowedAudioMimeTypes.has(file.mimetype) || file.mimetype === 'application/octet-stream') {
     cb(null, true)
   } else {
-    cb(new Error('Only image uploads are allowed'))
+    cb(new Error('Only image and audio uploads are allowed'))
   }
 }
 
 const upload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 } // 5MB
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB
 })
 
 export default upload
