@@ -55,6 +55,18 @@ const MessageBubble = ({ message, isOwn, currentLanguage, currentUserId, userNam
   const displayText = isDeleted ? 'This message was deleted' : (hasAudio ? '' : (translatedText || message.text))
   const shouldShowOriginal = !isDeleted && !hasAudio && Boolean(translatedText) && translatedText !== message.text
 
+  const translatedTranscriptText = !isOwn
+    ? (message.translatedTranscript?.[currentLanguage]
+      || Object.values(message.translatedTranscript || {})[0])
+    : undefined
+  const voiceCaption = isOwn
+    ? message.transcript || null
+    : (translatedTranscriptText || message.transcript || null)
+  const shouldShowOriginalTranscript = !isOwn
+    && Boolean(translatedTranscriptText)
+    && Boolean(message.transcript)
+    && translatedTranscriptText !== message.transcript
+
   const reactionSummary = useMemo(() => {
     const reactions = Array.isArray(message.reactions) ? message.reactions : []
     const grouped = reactions.reduce<Record<string, { count: number; hasMine: boolean }>>((acc, reaction) => {
@@ -259,8 +271,8 @@ const MessageBubble = ({ message, isOwn, currentLanguage, currentUserId, userNam
               {resolvedAudioUrl && !isDeleted && (
                 <div
                   className={`mt-3 min-w-[200px] rounded-2xl border px-3 py-3 shadow-sm ${isOwn
-                      ? 'border-white/10 bg-white/10 text-white'
-                      : 'border-gray-200 bg-white/70 text-gray-900 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100'
+                    ? 'border-white/10 bg-white/10 text-white'
+                    : 'border-gray-200 bg-white/70 text-gray-900 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100'
                     }`}
                 >
                   <audio
@@ -292,8 +304,8 @@ const MessageBubble = ({ message, isOwn, currentLanguage, currentUserId, userNam
                       type="button"
                       onClick={togglePlay}
                       className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors ${isOwn
-                          ? 'bg-white text-indigo-700 hover:bg-white/90'
-                          : 'bg-indigo-600 text-white hover:bg-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-400'
+                        ? 'bg-white text-indigo-700 hover:bg-white/90'
+                        : 'bg-indigo-600 text-white hover:bg-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-400'
                         }`}
                       aria-label={isPlaying ? 'Pause voice message' : 'Play voice message'}
                     >
@@ -316,6 +328,16 @@ const MessageBubble = ({ message, isOwn, currentLanguage, currentUserId, userNam
                       </div>
                     </div>
                   </div>
+                  {voiceCaption && (
+                    <p className={`mt-2 whitespace-pre-wrap text-xs leading-5 ${isOwn ? 'text-white/90' : 'text-gray-700 dark:text-gray-200'}`}>
+                      {voiceCaption}
+                    </p>
+                  )}
+                  {shouldShowOriginalTranscript && (
+                    <p className={`mt-1 whitespace-pre-wrap text-[11px] ${isOwn ? 'text-white/60' : 'text-gray-500 dark:text-gray-400'}`}>
+                      {message.transcript}
+                    </p>
+                  )}
                 </div>
               )}
 

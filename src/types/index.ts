@@ -28,6 +28,8 @@ export interface Message {
   };
   imageUrl?: string | null;
   audioUrl?: string | null;
+  transcript?: string | null;
+  translatedTranscript?: Record<string, string>;
   reactions?: Array<{
     userId: string;
     emoji: string;

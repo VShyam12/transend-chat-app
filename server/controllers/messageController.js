@@ -6,6 +6,7 @@ import User from '../models/userModel.js';
 import { connectedUsers, emitToUser, serializeMessage } from '../socketHandler.js';
 import { io } from '../index.js';
 import { translateText } from '../utils/translate.js';
+import { transcribeAudio } from '../utils/transcribe.js';
 
 const resolveImageUrl = (payload = {}) => {
   const candidate = payload.imageUrl ?? payload.fileUrl ?? payload.image ?? null;
@@ -36,7 +37,17 @@ const toPlainMap = (value) => {
 };
 
 const createMessage = async (payload) => {
-  const { senderId, receiverId, message, translated, isRead = false, imageUrl = null, audioUrl = null } = payload;
+  const {
+    senderId,
+    receiverId,
+    message,
+    translated,
+    isRead = false,
+    imageUrl = null,
+    audioUrl = null,
+    transcript = null,
+    translatedTranscript = {},
+  } = payload;
 
   const messageDocument = await Message.create({
     senderId,
@@ -46,6 +57,8 @@ const createMessage = async (payload) => {
     isRead,
     imageUrl,
     audioUrl,
+    transcript,
+    translatedTranscript,
   });
 
   return messageDocument;
@@ -60,6 +73,8 @@ const formatDeletedMessage = (messageDocument) => {
     text: 'This message was deleted',
     imageUrl: null,
     audioUrl: null,
+    transcript: null,
+    translatedTranscript: {},
     deleted: true,
   };
 };
@@ -151,6 +166,27 @@ const uploadAudio = asyncHandler(async (req, res) => {
     throw new Error('Receiver not found');
   }
 
+  let transcript = null;
+  let translatedTranscript = {};
+
+  try {
+    transcript = await transcribeAudio(req.file.path);
+  } catch (transcriptionError) {
+    console.warn('Voice message transcription failed:', transcriptionError?.message || transcriptionError);
+  }
+
+  if (transcript) {
+    const receiverLanguage = receiver.preferredLanguage || 'en';
+    try {
+      const translatedText = await translateText(transcript, receiverLanguage);
+      if (translatedText) {
+        translatedTranscript = { [receiverLanguage]: translatedText };
+      }
+    } catch (translationError) {
+      console.warn('Voice message transcript translation failed:', translationError?.message || translationError);
+    }
+  }
+
   const savedMessage = await createMessage({
     senderId,
     receiverId,
@@ -158,6 +194,8 @@ const uploadAudio = asyncHandler(async (req, res) => {
     translated: {},
     isRead: false,
     audioUrl,
+    transcript,
+    translatedTranscript,
   });
 
   const populatedMessage = await Message.findById(savedMessage._id)
@@ -359,22 +397,22 @@ const getChats = asyncHandler(async (req, res) => {
     if (!existing) {
       const lastMessage = messageDocument.deleted
         ? {
-            message: 'This message was deleted',
-            text: 'This message was deleted',
-            translated: {},
-            createdAt: messageDocument.createdAt,
-            senderId,
-            deleted: true,
-            deletedAt: messageDocument.deletedAt,
-          }
+          message: 'This message was deleted',
+          text: 'This message was deleted',
+          translated: {},
+          createdAt: messageDocument.createdAt,
+          senderId,
+          deleted: true,
+          deletedAt: messageDocument.deletedAt,
+        }
         : {
-            message: messageDocument.message,
-            translated: toPlainMap(messageDocument.translated),
-            createdAt: messageDocument.createdAt,
-            senderId,
-            deleted: Boolean(messageDocument.deleted),
-            deletedAt: messageDocument.deletedAt,
-          };
+          message: messageDocument.message,
+          translated: toPlainMap(messageDocument.translated),
+          createdAt: messageDocument.createdAt,
+          senderId,
+          deleted: Boolean(messageDocument.deleted),
+          deletedAt: messageDocument.deletedAt,
+        };
 
       chatsByUserId.set(partnerId, {
         user: {
@@ -526,8 +564,8 @@ const toggleReaction = asyncHandler(async (req, res) => {
   const populated = isGroupMessage
     ? await GroupMessage.findById(messageDoc._id).populate('senderId', 'name email preferredLanguage')
     : await Message.findById(messageDoc._id)
-        .populate('senderId', 'name email preferredLanguage')
-        .populate('receiverId', 'name email preferredLanguage')
+      .populate('senderId', 'name email preferredLanguage')
+      .populate('receiverId', 'name email preferredLanguage')
 
   const formatted = serializeMessage(populated)
 

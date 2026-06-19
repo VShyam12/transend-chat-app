@@ -56,6 +56,8 @@ const serializeMessage = (messageDocument) => {
     status,
     imageUrl: rawMessage.imageUrl || null,
     audioUrl: rawMessage.audioUrl || null,
+    transcript: rawMessage.transcript || null,
+    translatedTranscript: toPlainMap(rawMessage.translatedTranscript),
     reactions: Array.isArray(rawMessage.reactions)
       ? rawMessage.reactions.map(r => ({ userId: String(r.userId), emoji: r.emoji }))
       : [],

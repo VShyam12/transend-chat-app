@@ -56,6 +56,8 @@ const normalizeMessage = (payload: any, currentLanguage: string): Message => {
     language: payload?.language ?? currentLanguage,
     imageUrl: payload?.imageUrl ?? null,
     audioUrl: payload?.audioUrl ?? null,
+    transcript: payload?.transcript ?? null,
+    translatedTranscript: payload?.translatedTranscript ?? {},
     reactions: Array.isArray(payload?.reactions)
       ? payload.reactions.map((reaction: any) => ({
         userId: String(reaction?.userId ?? ''),
@@ -351,6 +353,8 @@ const ChatWindow = ({ currentUser, selectedChat, onGroupsChanged }: ChatWindowPr
         ...normalized,
         imageUrl: payload?.imageUrl ?? normalized.imageUrl ?? null,
         audioUrl: payload?.audioUrl ?? normalized.audioUrl ?? null,
+        transcript: payload?.transcript ?? normalized.transcript ?? null,
+        translatedTranscript: payload?.translatedTranscript ?? normalized.translatedTranscript ?? {},
       }
 
       if (isGroupChat) {
@@ -402,6 +406,8 @@ const ChatWindow = ({ currentUser, selectedChat, onGroupsChanged }: ChatWindowPr
         ...normalized,
         imageUrl: payload?.imageUrl ?? normalized.imageUrl ?? null,
         audioUrl: payload?.audioUrl ?? normalized.audioUrl ?? null,
+        transcript: payload?.transcript ?? normalized.transcript ?? null,
+        translatedTranscript: payload?.translatedTranscript ?? normalized.translatedTranscript ?? {},
       }
 
       if (
@@ -503,6 +509,8 @@ const ChatWindow = ({ currentUser, selectedChat, onGroupsChanged }: ChatWindowPr
         ...normalized,
         imageUrl: payload?.imageUrl ?? normalized.imageUrl ?? null,
         audioUrl: payload?.audioUrl ?? normalized.audioUrl ?? null,
+        transcript: payload?.transcript ?? normalized.transcript ?? null,
+        translatedTranscript: payload?.translatedTranscript ?? normalized.translatedTranscript ?? {},
       }
 
       if (isGroupChat) {
@@ -536,6 +544,8 @@ const ChatWindow = ({ currentUser, selectedChat, onGroupsChanged }: ChatWindowPr
         ...normalized,
         imageUrl: payload?.imageUrl ?? normalized.imageUrl ?? null,
         audioUrl: payload?.audioUrl ?? normalized.audioUrl ?? null,
+        transcript: payload?.transcript ?? normalized.transcript ?? null,
+        translatedTranscript: payload?.translatedTranscript ?? normalized.translatedTranscript ?? {},
         edited: true,
         editedAt: payload?.editedAt ?? new Date(),
       }

@@ -36,6 +36,15 @@ const messageSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    transcript: {
+      type: String,
+      default: null,
+    },
+    translatedTranscript: {
+      type: Map,
+      of: String,
+      default: {},
+    },
     // Reactions: an array of { userId, emoji }
     reactions: [
       {
